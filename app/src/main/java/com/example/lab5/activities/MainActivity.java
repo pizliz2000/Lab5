@@ -21,6 +21,8 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.Volley;
+
+import com.example.lab5.BreedItem;
 import com.example.lab5.Item;
 
 import com.example.lab5.adapters.MainAdapter;
@@ -31,20 +33,28 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     public static final String EXTRA_URL = "imageUrl";
     private String JSON_URL;
+    private String JSON_URL2 = "https://api.thecatapi.com/v1/breeds?attach_breed=0";
     LinearLayoutManager manager;
     private RecyclerView mRecyclerView;
     private MainAdapter mExampleAdapter;
     private ArrayList<Item> mExampleList;
-    private RequestQueue mRequestQueue;
+    private RequestQueue mRequestQueue, mRequestQueue1;
     Spinner spinner;
     boolean isScrolling = false;
     int currentItems, totalItems, scrollOutItems;
     private Button nextPage, start;
     String[] cities = {"abys", "aege", "acur", "asho", "amau", "bali"};
+
+    String[] ids;
+    public List<BreedItem> items = new ArrayList<>();
+    public List<BreedItem> breedItems = new ArrayList<>();
+
+    private ArrayAdapter<String> adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,25 +65,12 @@ public class MainActivity extends AppCompatActivity {
         manager = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(manager);
         mRequestQueue = Volley.newRequestQueue(this);
+        mRequestQueue1 = Volley.newRequestQueue(this);
         start = (Button) findViewById(R.id.start);
-        start.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                JSON_URL = "https://api.thecatapi.com/v1/images/search?breed_ids="+spinner.getSelectedItem().toString();
-                populateData();
-                initAdapter();
-                addOnScroll();
-            }
-        });
         spinner = (Spinner) findViewById(R.id.cities);
-        // Создаем адаптер ArrayAdapter с помощью массива строк и стандартной разметки элемета spinner
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, cities);
-        // Определяем разметку для использования при выборе элемента
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        // Применяем адаптер к элементу spinner
-        spinner.setAdapter(adapter);
-
         nextPage = (Button) findViewById(R.id.next_btn);
+        nextPage.setEnabled(false);
+        start.setEnabled(false);
         nextPage.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -81,6 +78,59 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(intent);
             }
         });
+        start.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                JSON_URL = "https://api.thecatapi.com/v1/images/search?breed_ids=" + ids[(int) spinner.getSelectedItemId()];
+                populateData();
+                initAdapter();
+                addOnScroll();
+            }
+        });
+        parseJSON2();
+    }
+
+    private void parseJSON2() {
+
+        JsonArrayRequest request = new JsonArrayRequest(JSON_URL2, new Response.Listener<JSONArray>() {
+            @Override
+            public void onResponse(JSONArray response) {
+                JSONObject jsonObject = null;
+                for (int i = 0; i < response.length(); i++) {
+                    try {
+                        jsonObject = response.getJSONObject(i);
+                        String id = jsonObject.getString("id");
+                        String name = jsonObject.getString("name");
+                        breedItems.add(new BreedItem(id, name));
+
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+                nextPage.setEnabled(true);
+                start.setEnabled(true);
+                ids = new String[breedItems.size()];
+                String[] names = new String[breedItems.size()];
+                for (int i = 0; i < breedItems.size(); i++) {
+                    ids[i] = breedItems.get(i).getId();
+                    names[i] = breedItems.get(i).getName();
+                }
+                initSpinnerAdapter(names);
+
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+            }
+        });
+        mRequestQueue1.add(request);
+    }
+
+
+    private void initSpinnerAdapter(String[] names) {
+        adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, names);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
     }
 
     private void addOnScroll() {
@@ -118,11 +168,9 @@ public class MainActivity extends AppCompatActivity {
             public void run() {
                 for (int i = 0; i < 5; i++) {
                     parseJSON();
-                    mExampleAdapter.notifyDataSetChanged();
-
                 }
             }
-        }, 1000);
+        }, 0);
     }
 
     private void populateData() {
@@ -135,7 +183,6 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-
     private void parseJSON() {
         JsonArrayRequest request = new JsonArrayRequest(JSON_URL, new Response.Listener<JSONArray>() {
             @Override
@@ -146,7 +193,7 @@ public class MainActivity extends AppCompatActivity {
                         jsonObject = response.getJSONObject(i);
                         String imageUrl = jsonObject.getString("url");
                         mExampleList.add(new Item(imageUrl));
-                        mExampleAdapter.notifyDataSetChanged();
+                        mExampleAdapter.notifyItemInserted(mExampleList.size() - 1);
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
@@ -160,5 +207,4 @@ public class MainActivity extends AppCompatActivity {
         });
         mRequestQueue.add(request);
     }
-
 }

@@ -3,6 +3,7 @@ package com.example.lab5.adapters;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -23,7 +24,7 @@ import java.util.List;
 public class MainAdapter extends RecyclerView.Adapter<MainAdapter.ExampleViewHolder> {
     private Context mContext;
     private ArrayList<Item> mExampleList;
-    private List<Item>likedList= new ArrayList<Item>(10);
+    private List<Item> likedList = new ArrayList<Item>(10);
 
 
     public MainAdapter(Context context, ArrayList<Item> exampleList) {
@@ -38,25 +39,43 @@ public class MainAdapter extends RecyclerView.Adapter<MainAdapter.ExampleViewHol
     }
 
     @Override
-    public void onBindViewHolder(final ExampleViewHolder holder, int position) {
-        Item currentItem = mExampleList.get(position);
+    public void onBindViewHolder(final ExampleViewHolder holder, final int position) {
+        final Item currentItem = mExampleList.get(position);
         final String imageUrl = currentItem.getImageUrl();
 //        Glide.with(mContext).load(imageUrl).asGif().placeholder(R.drawable.loading_gif).into(holder.mImageView);
+        holder.likeBtn.setBackgroundColor(currentItem.isNiceSelected() ? Color.GREEN : Color.WHITE);
+        holder.disBtn.setBackgroundColor(currentItem.isBadSelected() ? Color.RED : Color.WHITE);
         Picasso.with(mContext).load(imageUrl).fit().centerInside().into(holder.mImageView);
         holder.likeBtn.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View e) {
-                likedList.add(new Item(imageUrl));
+            public void onClick(View v) {
+                if (likedList.size() >= 9) {
+                    likedList.remove(0);
+                } else {
+                    likedList.add(new Item(imageUrl));
+                }
+
                 Singleton.getInstance().setItems(likedList);
-                holder.likeBtn.setBackgroundColor(Color.GREEN);
-                holder.disBtn.setBackgroundColor(Color.WHITE);
+                currentItem.setNiceSelected(!currentItem.isNiceSelected());
+                holder.likeBtn.setBackgroundColor(currentItem.isNiceSelected() ? Color.GREEN : Color.WHITE);
+                notifyItemChanged(position);
             }
         });
+
         holder.disBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View e) {
-                holder.disBtn.setBackgroundColor(Color.RED);
-                holder.likeBtn.setBackgroundColor(Color.WHITE);
+                for (int i = 0; i < likedList.size(); i++) {
+                    if (likedList.get(i).getImageUrl().equals(currentItem.getImageUrl())) {
+                        Log.d("Current item", currentItem.getImageUrl());
+                        Log.d("DELETED", likedList.get(i).getImageUrl());
+                        likedList.remove(i);
+                    }
+                }
+                Singleton.getInstance().setItems(likedList);
+                currentItem.setBadSelected(!currentItem.isBadSelected());
+                holder.disBtn.setBackgroundColor(currentItem.isBadSelected() ? Color.RED : Color.WHITE);
+                notifyItemChanged(position);
             }
         });
     }
@@ -68,13 +87,13 @@ public class MainAdapter extends RecyclerView.Adapter<MainAdapter.ExampleViewHol
 
     public class ExampleViewHolder extends RecyclerView.ViewHolder {
         public ImageView mImageView;
-public Button likeBtn, disBtn;
+        public Button likeBtn, disBtn;
 
         public ExampleViewHolder(View itemView) {
             super(itemView);
             mImageView = itemView.findViewById(R.id.image_view);
-            likeBtn=itemView.findViewById(R.id.Likebutton);
-            disBtn=itemView.findViewById(R.id.Disbutton);
+            likeBtn = itemView.findViewById(R.id.Likebutton);
+            disBtn = itemView.findViewById(R.id.Disbutton);
         }
     }
 }
